@@ -1,0 +1,28 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "msvc",
+            "generator": "Visual Studio 18 2026",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build-msvc",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_TOOLCHAIN_FILE": "C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_TARGET_TRIPLET": "x64-windows"
+            }
+        },
+        {
+            "name": "clang-cl",
+            "generator": "Visual Studio 18 2026",
+            "architecture": "x64",
+            "toolset": "ClangCL",
+            "binaryDir": "${sourceDir}/build-clangcl",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_TOOLCHAIN_FILE": "C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_TARGET_TRIPLET": "x64-windows"
+            }
+        }
+    ]
+}
