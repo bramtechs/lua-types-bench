@@ -15,3 +15,5 @@ target_link_libraries(luatypetest PRIVATE
 target_include_directories(luatypetest PRIVATE ${LUA_INCLUDE_DIR})
 # Disable sol2 safety checks for fair perf comparison
 target_compile_definitions(luatypetest PRIVATE SOL_ALL_SAFETIES_ON=0)
+
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT luatypetest)
