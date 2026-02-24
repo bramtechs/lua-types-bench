@@ -40,30 +40,26 @@ The accumulated `sum` is returned so Lua cannot dead-code-eliminate any of the w
 ## Build Instructions
 
 ### Prerequisites
-- Visual Studio 2022 (MSVC)
+- Visual Studio 2022 with the ClangCL workload (for the `clang-cl` preset)
 - CMake ≥ 3.20
-- vcpkg at `C:\dev\vcpkg` (or update `CMAKE_TOOLCHAIN_FILE` below)
+- vcpkg at `C:\dev\vcpkg` (or update `CMAKE_TOOLCHAIN_FILE` in `CMakePresets.json`)
 
 ### Steps
 
 ```bash
 # Configure — vcpkg installs sol2 3.5.0, Lua 5.4.8, Google Benchmark 1.9.5
-cmake -B build -S . \
-  -DCMAKE_TOOLCHAIN_FILE=C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake \
-  -DVCPKG_TARGET_TRIPLET=x64-windows \
-  -DCMAKE_BUILD_TYPE=Release
+cmake --preset msvc        # or: cmake --preset clang-cl
 
 # Build
-cmake --build build --config Release
+cmake --build build-msvc --config Release
+# or
+cmake --build build-clangcl --config Release
 
 # Copy DLLs next to the exe (first time only)
-cp build/vcpkg_installed/x64-windows/bin/*.dll build/Release/
+cp build-msvc/vcpkg_installed/x64-windows/bin/*.dll build-msvc/Release/
 
 # Run
-./build/Release/luatypetest.exe --benchmark_format=console
-
-# Capture JSON
-./build/Release/luatypetest.exe --benchmark_format=json > results.json
+./build-msvc/Release/luatypetest.exe --benchmark_format=console
 ```
 
 > **Note:** vcpkg.json pins Lua to 5.4.8 because sol2 3.5.0 does not support Lua 5.5.
@@ -72,42 +68,62 @@ cp build/vcpkg_installed/x64-windows/bin/*.dll build/Release/
 
 ## Benchmark Results
 
-Machine: Intel Core i7-12700H (20 threads @ 2803 MHz), Windows 11, MSVC 19.50, Release build.
+Machine: Intel Core i7-12700H (20 threads @ 2803 MHz), Windows 11, Release build.
+`items_per_second` = inner-loop iterations per second (one full set of 4-type operations).
+
+### MSVC 19.50
 
 ```
 Benchmark                   Time             CPU   Iterations  items_per_second
-BM_Usertypes/100       359076 ns       322323 ns         2036   310.248k/s
-BM_Usertypes/1000     3551500 ns      3447770 ns          213   290.043k/s
-BM_Usertypes/10000   59123189 ns     53453947 ns           19   187.077k/s
-BM_Tables/100          255030 ns       228795 ns         2800   437.073k/s
-BM_Tables/1000        2750684 ns      2287946 ns          280   437.073k/s
-BM_Tables/10000      27194764 ns     20625000 ns           25   484.848k/s
+BM_Usertypes/100       372515 ns       368369 ns         2036   271.467k/s
+BM_Usertypes/1000     3726992 ns      3667840 ns          213   272.640k/s
+BM_Usertypes/10000   74642880 ns     70312500 ns           20   142.222k/s
+BM_Tables/100          256545 ns       249023 ns         3200   401.569k/s
+BM_Tables/1000        2653773 ns      2259036 ns          249   442.667k/s
+BM_Tables/10000      26709729 ns     25390625 ns           24   393.846k/s
 ```
-
-`items_per_second` = inner-loop iterations per second (one full set of 4-type operations per item).
-
-### Per-item cost and slowdown ratio
 
 | n | Usertypes (ns/item) | Tables (ns/item) | Ratio |
 |---|---------------------|------------------|-------|
-| 100 | ~3 220 | ~2 288 | **1.41×** |
-| 1 000 | ~3 448 | ~2 288 | **1.51×** |
-| 10 000 | ~5 345 | ~2 063 | **2.59×** |
+| 100 | ~3 684 | ~2 490 | **1.48×** |
+| 1 000 | ~3 668 | ~2 259 | **1.62×** |
+| 10 000 | ~7 031 | ~2 539 | **2.77×** |
+
+### clang-cl (VS ClangCL toolset)
+
+```
+Benchmark                   Time             CPU   Iterations  items_per_second
+BM_Usertypes/100       353150 ns       337672 ns         2036   296.145k/s
+BM_Usertypes/1000     3599216 ns      3447770 ns          213   290.043k/s
+BM_Usertypes/10000   34865657 ns     34970238 ns           21   285.957k/s
+BM_Tables/100          109129 ns       106720 ns         7467   937.035k/s
+BM_Tables/1000        1087688 ns      1087684 ns          747   919.385k/s
+BM_Tables/10000      10971995 ns     10986328 ns           64   910.222k/s
+```
+
+| n | Usertypes (ns/item) | Tables (ns/item) | Ratio |
+|---|---------------------|------------------|-------|
+| 100 | ~3 377 | ~1 067 | **3.16×** |
+| 1 000 | ~3 448 | ~1 088 | **3.17×** |
+| 10 000 | ~3 497 | ~1 099 | **3.18×** |
 
 ---
 
 ## Analysis
 
-**At small n (100 iterations), usertypes are ~1.4× slower than tables.**
-Each field access on a usertype goes through Lua's metamethod dispatch (`__index`), whereas a plain table field access is a direct hash-table lookup. Constructing a usertype also allocates a Lua *userdata* object (a heap-allocated block with a metatable) instead of a lightweight table.
+### Tables: clang-cl is ~2.3× faster than MSVC
 
-**The gap widens significantly at n=10 000 (2.6× slower).**
-This is primarily **garbage-collector pressure**. Each loop iteration allocates several userdata objects (one per struct). At 10 000 iterations the GC cycles more frequently to collect the dead userdata, which is more expensive than collecting dead tables because userdata have `__gc` finalizers registered by sol2. Plain tables are GC'd in bulk with no per-object finalization cost.
+clang-cl produces significantly tighter code for the plain-table path (~1 080 ns/item vs ~2 430 ns/item with MSVC). The Lua table hash-lookup loop benefits strongly from clang's optimizer. The usertype path shows only a modest improvement (~3 430 ns vs ~4 790 ns), because that path is dominated by Lua C API calls and metamethod dispatch — overhead that cannot be optimized away by the compiler.
 
-**Plain tables are the right choice for pure Lua-side math objects.**
-If the struct only needs to be seen from Lua, a plain table is faster and simpler. Usertypes pay off when:
-- You need a C++-side struct to be shared by reference between C++ and Lua without copying
-- You want type safety / metamethod enforcement on the Lua side
-- The struct is long-lived (not created/destroyed in a tight loop)
+### MSVC: GC pressure grows with n, clang-cl does not
 
-For hot-path, iteration-heavy geometry code in Lua, prefer tables or preallocate and reuse usertype objects rather than constructing them per-iteration.
+With MSVC the usertype ratio climbs from **1.48× → 2.77×** as n increases, because MSVC's generated code is slower overall, so the Lua GC fires more frequently relative to useful work. With clang-cl the ratio is flat at **~3.17×** across all n — clang runs fast enough that GC cycles are a smaller fraction of total time.
+
+### Choosing between usertypes and tables
+
+Plain tables are the right choice for pure Lua-side math objects constructed in tight loops. Usertypes pay off when:
+- The object is long-lived (not created/destroyed per iteration)
+- You need a C++-side struct shared by reference between C++ and Lua without copying
+- You want type safety or metamethod enforcement from Lua
+
+For hot-path geometry code, prefer tables or preallocate and reuse usertype objects rather than constructing them per-iteration.
