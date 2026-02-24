@@ -1,0 +1,9 @@
+{
+  "name": "luatypetest",
+  "version": "0.1.0",
+  "builtin-baseline": "a2a478a93d582a4b395a4dc4b7052bfcb42c1f8e",
+  "dependencies": ["lua", "sol2", "benchmark"],
+  "overrides": [
+    { "name": "lua", "version": "5.4.8" }
+  ]
+}

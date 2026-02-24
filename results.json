@@ -1,0 +1,131 @@
+{
+  "context": {
+    "date": "2026-02-25T00:28:26+01:00",
+    "host_name": "LAPTOP-DELL",
+    "executable": "C:\\dev\\luatypetest\\build\\Release\\luatypetest.exe",
+    "num_cpus": 20,
+    "mhz_per_cpu": 2803,
+    "caches": [
+      {
+        "type": "Data",
+        "level": 1,
+        "size": 49152,
+        "num_sharing": 2
+      },
+      {
+        "type": "Instruction",
+        "level": 1,
+        "size": 32768,
+        "num_sharing": 2
+      },
+      {
+        "type": "Unified",
+        "level": 2,
+        "size": 1310720,
+        "num_sharing": 2
+      },
+      {
+        "type": "Unified",
+        "level": 3,
+        "size": 25165824,
+        "num_sharing": 20
+      }
+    ],
+    "load_avg": [],
+    "library_version": "v1.9.5",
+    "library_build_type": "release",
+    "json_schema_version": 1
+  },
+  "benchmarks": [
+    {
+      "name": "BM_Usertypes/100",
+      "family_index": 0,
+      "per_family_instance_index": 0,
+      "run_name": "BM_Usertypes/100",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 2036,
+      "real_time": 3.9193845777255471e+05,
+      "cpu_time": 3.8371807465618860e+05,
+      "time_unit": "ns",
+      "items_per_second": 2.6060800000000000e+05
+    },
+    {
+      "name": "BM_Usertypes/1000",
+      "family_index": 0,
+      "per_family_instance_index": 1,
+      "run_name": "BM_Usertypes/1000",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 213,
+      "real_time": 3.5355840375135378e+06,
+      "cpu_time": 3.4477699530516430e+06,
+      "time_unit": "ns",
+      "items_per_second": 2.9004255319148937e+05
+    },
+    {
+      "name": "BM_Usertypes/10000",
+      "family_index": 0,
+      "per_family_instance_index": 2,
+      "run_name": "BM_Usertypes/10000",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 25,
+      "real_time": 6.9690384001005441e+07,
+      "cpu_time": 6.2500000000000000e+07,
+      "time_unit": "ns",
+      "items_per_second": 1.6000000000000000e+05
+    },
+    {
+      "name": "BM_Tables/100",
+      "family_index": 1,
+      "per_family_instance_index": 0,
+      "run_name": "BM_Tables/100",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 2987,
+      "real_time": 2.5974877802174943e+05,
+      "cpu_time": 2.5108804820890527e+05,
+      "time_unit": "ns",
+      "items_per_second": 3.9826666666666669e+05
+    },
+    {
+      "name": "BM_Tables/1000",
+      "family_index": 1,
+      "per_family_instance_index": 1,
+      "run_name": "BM_Tables/1000",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 264,
+      "real_time": 2.9309034090891308e+06,
+      "cpu_time": 2.6041666666666665e+06,
+      "time_unit": "ns",
+      "items_per_second": 3.8400000000000000e+05
+    },
+    {
+      "name": "BM_Tables/10000",
+      "family_index": 1,
+      "per_family_instance_index": 2,
+      "run_name": "BM_Tables/10000",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 28,
+      "real_time": 2.7588214286619663e+07,
+      "cpu_time": 2.6785714285714287e+07,
+      "time_unit": "ns",
+      "items_per_second": 3.7333333333333331e+05
+    }
+  ]
+}
