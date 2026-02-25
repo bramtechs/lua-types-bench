@@ -27,13 +27,15 @@ Both functions perform the **same operations** per iteration so the only variabl
 | `Point` | `int x, y` | Squared distance from origin (`x²+y²`) |
 
 Per loop iteration:
-1. Construct two `Vector2` values, compute dot product → accumulate
-2. Construct two `Vector3` values, compute dot product → accumulate
-3. Construct a `RectF`, compute area → accumulate
+1. Construct two `Vector2` values; compute `+`, `-`, `*scalar`, `/scalar`; accumulate fields from each result
+2. Construct two `Vector3` values; compute `+`, `-`, `*scalar`, `/scalar`; accumulate fields from each result
+3. Construct a `RectF`, compute area (`w * h`) → accumulate
 4. Construct a `Point`, compute `x²+y²` → accumulate
 5. Point-in-rect test using `Vector2` and `RectF` → conditionally accumulate
 
 The accumulated `sum` is returned so Lua cannot dead-code-eliminate any of the work.
+
+In the **usertype** script, vector arithmetic uses Lua operator syntax (`v2a + v2b`, `v2a * 2.0`, etc.) which dispatches through sol2's registered `__add`, `__sub`, `__mul`, `__div` metamethods. In the **table** script the same arithmetic is done component-wise by hand (`{x=v2a.x+v2b.x, y=v2a.y+v2b.y}`, etc.), so both scripts perform an identical number of floating-point operations.
 
 ---
 
@@ -75,49 +77,55 @@ Machine: Intel Core i7-12700H (20 threads @ 2803 MHz), Windows 11, Release build
 
 ```
 Benchmark                   Time             CPU   Iterations  items_per_second
-BM_Usertypes/100       372515 ns       368369 ns         2036   271.467k/s
-BM_Usertypes/1000     3726992 ns      3667840 ns          213   272.640k/s
-BM_Usertypes/10000   74642880 ns     70312500 ns           20   142.222k/s
-BM_Tables/100          256545 ns       249023 ns         3200   401.569k/s
-BM_Tables/1000        2653773 ns      2259036 ns          249   442.667k/s
-BM_Tables/10000      26709729 ns     25390625 ns           24   393.846k/s
+BM_Usertypes/100       565643 ns       578125 ns         1000   172.973k/s
+BM_Usertypes/1000     5807545 ns      5625000 ns          100   177.778k/s
+BM_Usertypes/10000   55114745 ns     52556818 ns           11   190.270k/s
+BM_Tables/100          250827 ns       245536 ns         2800   407.273k/s
+BM_Tables/1000        2534964 ns      2508361 ns          299   398.667k/s
+BM_Tables/10000      25024764 ns     24553571 ns           28   407.273k/s
 ```
 
 | n | Usertypes (ns/item) | Tables (ns/item) | Ratio |
 |---|---------------------|------------------|-------|
-| 100 | ~3 684 | ~2 490 | **1.48×** |
-| 1 000 | ~3 668 | ~2 259 | **1.62×** |
-| 10 000 | ~7 031 | ~2 539 | **2.77×** |
+| 100 | ~5 781 | ~2 455 | **2.35×** |
+| 1 000 | ~5 625 | ~2 508 | **2.24×** |
+| 10 000 | ~5 256 | ~2 455 | **2.14×** |
 
 ### clang-cl (VS ClangCL toolset)
 
 ```
 Benchmark                   Time             CPU   Iterations  items_per_second
-BM_Usertypes/100       353150 ns       337672 ns         2036   296.145k/s
-BM_Usertypes/1000     3599216 ns      3447770 ns          213   290.043k/s
-BM_Usertypes/10000   34865657 ns     34970238 ns           21   285.957k/s
-BM_Tables/100          109129 ns       106720 ns         7467   937.035k/s
-BM_Tables/1000        1087688 ns      1087684 ns          747   919.385k/s
-BM_Tables/10000      10971995 ns     10986328 ns           64   910.222k/s
+BM_Usertypes/100       567157 ns       546875 ns         1000   182.857k/s
+BM_Usertypes/1000     5608119 ns      5468750 ns          100   182.857k/s
+BM_Usertypes/10000   56407560 ns     51562500 ns           10   193.939k/s
+BM_Tables/100          257108 ns       256319 ns         2987   390.139k/s
+BM_Tables/1000        2539381 ns      2511161 ns          280   398.222k/s
+BM_Tables/10000      25496442 ns     24639423 ns           26   405.854k/s
 ```
 
 | n | Usertypes (ns/item) | Tables (ns/item) | Ratio |
 |---|---------------------|------------------|-------|
-| 100 | ~3 377 | ~1 067 | **3.16×** |
-| 1 000 | ~3 448 | ~1 088 | **3.17×** |
-| 10 000 | ~3 497 | ~1 099 | **3.18×** |
+| 100 | ~5 469 | ~2 563 | **2.13×** |
+| 1 000 | ~5 469 | ~2 511 | **2.18×** |
+| 10 000 | ~5 156 | ~2 464 | **2.09×** |
 
 ---
 
 ## Analysis
 
-### Tables: clang-cl is ~2.3× faster than MSVC
+### Both compilers agree: usertypes cost ~2–2.4× vs tables
 
-clang-cl produces significantly tighter code for the plain-table path (~1 080 ns/item vs ~2 430 ns/item with MSVC). The Lua table hash-lookup loop benefits strongly from clang's optimizer. The usertype path shows only a modest improvement (~3 430 ns vs ~4 790 ns), because that path is dominated by Lua C API calls and metamethod dispatch — overhead that cannot be optimized away by the compiler.
+Every vector operator (`+`, `-`, `*`, `/`) dispatches through a sol2 metamethod, crossing the C++/Lua boundary twice (once to look up the metamethod, once to call it) and allocating a fresh userdata object for the result. Plain tables perform the same arithmetic inline and allocate ordinary Lua tables. The overhead is consistent and predictable across both compilers.
 
-### MSVC: GC pressure grows with n, clang-cl does not
+### GC pressure is now symmetric
 
-With MSVC the usertype ratio climbs from **1.48× → 2.77×** as n increases, because MSVC's generated code is slower overall, so the Lua GC fires more frequently relative to useful work. With clang-cl the ratio is flat at **~3.17×** across all n — clang runs fast enough that GC cycles are a smaller fraction of total time.
+Unlike the earlier single-operator benchmark, each iteration now allocates the same number of intermediate objects in both the usertype and table scripts (4 result objects per vector type). This is why the ratio stays flat across all values of n for both compilers — neither side accumulates disproportionate GC load.
+
+### Compiler choice barely affects the usertype path
+
+Usertypes: MSVC ~5 554 ns/item vs clang-cl ~5 365 ns/item — only a ~3% difference. The bottleneck is Lua C API overhead and metamethod dispatch, not the code the compiler generates for the lambda bodies.
+
+Tables: MSVC ~2 473 ns/item vs clang-cl ~2 513 ns/item — effectively identical here too (unlike a previous lighter workload where clang-cl had a larger edge, the added table allocations bring both compilers to the same level).
 
 ### Choosing between usertypes and tables
 
